@@ -8,12 +8,12 @@ jest.mock('../db/mongo');
 
 // Mock the utilities
 jest.mock('../utils/eventUtils', () => ({
-  normalizeEventName: jest.fn((name: string) => name.toLowerCase().replace(/\s+/g, '-')),
-  generateS3Folder: jest.fn((normalizedName: string, date: string, count: number) =>
+  normalizeEventName: jest.fn((name) => name.toLowerCase().replace(/\s+/g, '-')),
+  generateS3Folder: jest.fn((normalizedName, date, count) =>
     count === 0 ? `events/${normalizedName}-${date}` : `events/${normalizedName}-${date}-${count + 1}`
   ),
   generateJoinCode: jest.fn(() => 'ABC123'),
-  generateJoinUrl: jest.fn((code: string) => `https://app.fiestime.com/join/${code}`),
+  generateJoinUrl: jest.fn((code) => `https://app.fiestime.com/join/${code}`),
   validateEventName: jest.fn(() => ({ valid: true })),
   validateEventDate: jest.fn(() => ({ valid: true }))
 }));
