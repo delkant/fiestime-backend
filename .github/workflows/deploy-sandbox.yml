@@ -112,16 +112,53 @@ jobs:
             exit 1
           }
 
-          aws cloudformation deploy \
-            --template-file cloudformation/template.yaml \
+          # Test CloudFormation service's access to the S3 bucket
+          echo "🔍 Testing S3 bucket access for CloudFormation..."
+          aws s3api head-bucket --bucket "${{ secrets.CODE_BUCKET_SANDBOX }}" --region "${{ secrets.AWS_REGION_SANDBOX }}" || {
+            echo "⚠️ Warning: Cannot access S3 bucket or bucket in different region"
+          }
+
+          # Get bucket location
+          BUCKET_REGION=$(aws s3api get-bucket-location --bucket "${{ secrets.CODE_BUCKET_SANDBOX }}" --query 'LocationConstraint' --output text)
+          echo "📍 Code bucket region: ${BUCKET_REGION}"
+          echo "📍 Deployment region: ${{ secrets.AWS_REGION_SANDBOX }}"
+          if [ "${BUCKET_REGION}" != "${{ secrets.AWS_REGION_SANDBOX }}" ] && [ "${BUCKET_REGION}" != "null" ]; then
+            echo "⚠️ WARNING: S3 bucket is in ${BUCKET_REGION} but deploying to ${{ secrets.AWS_REGION_SANDBOX }}"
+          fi
+
+          # Try manual changeset creation for better error diagnostics
+          CHANGESET_NAME="deploy-$(date +%s)"
+          echo "Creating changeset: ${CHANGESET_NAME}"
+
+          aws cloudformation create-change-set \
+            --template-body file://cloudformation/template.yaml \
             --stack-name "${{ secrets.CLOUDFORMATION_STACK_NAME_SANDBOX }}" \
+            --change-set-name "${CHANGESET_NAME}" \
             --capabilities CAPABILITY_NAMED_IAM \
-            --parameter-overrides \
-              UploadBucketName="${{ secrets.UPLOAD_BUCKET_SANDBOX }}" \
-              CodeS3Bucket="${{ secrets.CODE_BUCKET_SANDBOX }}" \
-              CodeS3Key="${CODE_S3_KEY}" \
-              LambdaFunctionName="fiestime-graphql-sandbox" \
-              ApiStageName="sandbox" \
+            --parameters \
+              ParameterKey=UploadBucketName,ParameterValue="${{ secrets.UPLOAD_BUCKET_SANDBOX }}" \
+              ParameterKey=CodeS3Bucket,ParameterValue="${{ secrets.CODE_BUCKET_SANDBOX }}" \
+              ParameterKey=CodeS3Key,ParameterValue="${CODE_S3_KEY}" \
+              ParameterKey=LambdaFunctionName,ParameterValue="fiestime-graphql-sandbox" \
+              ParameterKey=ApiStageName,ParameterValue="sandbox" \
+            --region "${{ secrets.AWS_REGION_SANDBOX }}" || {
+              echo "❌ Changeset creation failed. Getting detailed error information..."
+              aws cloudformation describe-stack-events \
+                --stack-name "${{ secrets.CLOUDFORMATION_STACK_NAME_SANDBOX }}" \
+                --region "${{ secrets.AWS_REGION_SANDBOX }}" \
+                --max-items 5 || echo "No stack events available"
+              exit 1
+          }
+
+          echo "✅ Changeset created successfully. Executing changeset..."
+          aws cloudformation execute-change-set \
+            --change-set-name "${CHANGESET_NAME}" \
+            --stack-name "${{ secrets.CLOUDFORMATION_STACK_NAME_SANDBOX }}" \
+            --region "${{ secrets.AWS_REGION_SANDBOX }}"
+
+          echo "⏳ Waiting for stack update to complete..."
+          aws cloudformation wait stack-update-complete \
+            --stack-name "${{ secrets.CLOUDFORMATION_STACK_NAME_SANDBOX }}" \
             --region "${{ secrets.AWS_REGION_SANDBOX }}"
         env:
           AWS_REGION: ${{ secrets.AWS_REGION_SANDBOX }}
