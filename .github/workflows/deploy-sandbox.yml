@@ -126,11 +126,18 @@ jobs:
             echo "⚠️ WARNING: S3 bucket is in ${BUCKET_REGION} but deploying to ${{ secrets.AWS_REGION_SANDBOX }}"
           fi
 
-          # Check if stack exists, then create or update accordingly
-          echo "🔍 Checking if CloudFormation stack exists..."
-          if aws cloudformation describe-stacks \
+          # Check if stack exists and is in a deployable state
+          echo "🔍 Checking CloudFormation stack status..."
+
+          STACK_STATUS=$(aws cloudformation describe-stacks \
             --stack-name "${{ secrets.CLOUDFORMATION_STACK_NAME_SANDBOX }}" \
-            --region "${{ secrets.AWS_REGION_SANDBOX }}" >/dev/null 2>&1; then
+            --region "${{ secrets.AWS_REGION_SANDBOX }}" \
+            --query 'Stacks[0].StackStatus' \
+            --output text 2>/dev/null || echo "DOES_NOT_EXIST")
+
+          echo "📊 Stack status: ${STACK_STATUS}"
+
+          if [[ "${STACK_STATUS}" =~ ^(CREATE_COMPLETE|UPDATE_COMPLETE|UPDATE_ROLLBACK_COMPLETE)$ ]]; then
 
             echo "📝 Stack exists. Creating changeset for update..."
             CHANGESET_NAME="update-$(date +%s)"
@@ -159,8 +166,37 @@ jobs:
               --stack-name "${{ secrets.CLOUDFORMATION_STACK_NAME_SANDBOX }}" \
               --region "${{ secrets.AWS_REGION_SANDBOX }}"
 
+          elif [[ "${STACK_STATUS}" =~ ^(REVIEW_IN_PROGRESS|CREATE_FAILED|ROLLBACK_COMPLETE)$ ]]; then
+            echo "🗑️ Stack is in ${STACK_STATUS} state. Deleting and recreating..."
+            aws cloudformation delete-stack \
+              --stack-name "${{ secrets.CLOUDFORMATION_STACK_NAME_SANDBOX }}" \
+              --region "${{ secrets.AWS_REGION_SANDBOX }}"
+
+            echo "⏳ Waiting for stack deletion to complete..."
+            aws cloudformation wait stack-delete-complete \
+              --stack-name "${{ secrets.CLOUDFORMATION_STACK_NAME_SANDBOX }}" \
+              --region "${{ secrets.AWS_REGION_SANDBOX }}" || true
+
+            echo "🆕 Creating new stack after cleanup..."
+            aws cloudformation create-stack \
+              --template-body file://cloudformation/template.yaml \
+              --stack-name "${{ secrets.CLOUDFORMATION_STACK_NAME_SANDBOX }}" \
+              --capabilities CAPABILITY_NAMED_IAM \
+              --parameters \
+                ParameterKey=UploadBucketName,ParameterValue="${{ secrets.UPLOAD_BUCKET_SANDBOX }}" \
+                ParameterKey=CodeS3Bucket,ParameterValue="${{ secrets.CODE_BUCKET_SANDBOX }}" \
+                ParameterKey=CodeS3Key,ParameterValue="${CODE_S3_KEY}" \
+                ParameterKey=LambdaFunctionName,ParameterValue="fiestime-graphql-sandbox" \
+                ParameterKey=ApiStageName,ParameterValue="sandbox" \
+              --region "${{ secrets.AWS_REGION_SANDBOX }}"
+
+            echo "⏳ Waiting for stack creation to complete..."
+            aws cloudformation wait stack-create-complete \
+              --stack-name "${{ secrets.CLOUDFORMATION_STACK_NAME_SANDBOX }}" \
+              --region "${{ secrets.AWS_REGION_SANDBOX }}"
+
           else
-            echo "🆕 Stack doesn't exist. Creating new stack..."
+            echo "🆕 Stack doesn't exist (status: ${STACK_STATUS}). Creating new stack..."
 
             aws cloudformation create-stack \
               --template-body file://cloudformation/template.yaml \
