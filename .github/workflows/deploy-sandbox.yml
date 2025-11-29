@@ -88,13 +88,30 @@ jobs:
       - name: Upload artifact to S3 (Sandbox)
         run: |
           export CODE_S3_KEY="fiestime/backend/sandbox/build-artifact-${{ github.sha }}.zip"
+          echo "Uploading build artifact to S3..."
           aws s3 cp build-artifact.zip "s3://${{ secrets.CODE_BUCKET_SANDBOX }}/${CODE_S3_KEY}"
+          echo "✅ Upload completed. Verifying object exists..."
+          aws s3 ls "s3://${{ secrets.CODE_BUCKET_SANDBOX }}/${CODE_S3_KEY}"
+          echo "✅ Build artifact verified in S3"
         env:
           AWS_REGION: ${{ secrets.AWS_REGION_SANDBOX }}
 
       - name: Deploy CloudFormation stack (Sandbox)
         run: |
           export CODE_S3_KEY="fiestime/backend/sandbox/build-artifact-${{ github.sha }}.zip"
+          echo "Deploying CloudFormation stack with parameters:"
+          echo "  Stack Name: ${{ secrets.CLOUDFORMATION_STACK_NAME_SANDBOX }}"
+          echo "  Upload Bucket: ${{ secrets.UPLOAD_BUCKET_SANDBOX }}"
+          echo "  Code Bucket: ${{ secrets.CODE_BUCKET_SANDBOX }}"
+          echo "  Code S3 Key: ${CODE_S3_KEY}"
+          echo "  Region: ${{ secrets.AWS_REGION_SANDBOX }}"
+
+          # Double-check that the S3 object exists before deployment
+          aws s3 ls "s3://${{ secrets.CODE_BUCKET_SANDBOX }}/${CODE_S3_KEY}" || {
+            echo "❌ Error: Build artifact not found in S3"
+            exit 1
+          }
+
           aws cloudformation deploy \
             --template-file cloudformation/template.yaml \
             --stack-name "${{ secrets.CLOUDFORMATION_STACK_NAME_SANDBOX }}" \
@@ -104,6 +121,7 @@ jobs:
               CodeS3Bucket="${{ secrets.CODE_BUCKET_SANDBOX }}" \
               CodeS3Key="${CODE_S3_KEY}" \
               LambdaFunctionName="fiestime-graphql-sandbox" \
-              ApiStageName="sandbox"
+              ApiStageName="sandbox" \
+            --region "${{ secrets.AWS_REGION_SANDBOX }}"
         env:
           AWS_REGION: ${{ secrets.AWS_REGION_SANDBOX }}
