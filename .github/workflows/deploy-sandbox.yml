@@ -68,6 +68,13 @@ jobs:
           aws sts get-caller-identity
           echo "✅ AWS credentials are working"
 
+      - name: Create S3 buckets if needed
+        run: |
+          echo "Creating S3 buckets if they don't exist..."
+          aws s3 mb s3://${{ secrets.CODE_BUCKET_SANDBOX }} --region ${{ secrets.AWS_REGION_SANDBOX }} || echo "Code bucket already exists or creation failed - continuing"
+          aws s3 mb s3://${{ secrets.UPLOAD_BUCKET_SANDBOX }} --region ${{ secrets.AWS_REGION_SANDBOX }} || echo "Upload bucket already exists or creation failed - continuing"
+          echo "✅ S3 bucket creation completed"
+
       - name: Upload artifact to S3 (Sandbox)
         run: |
           export CODE_S3_KEY="fiestime/backend/sandbox/build-artifact-${{ github.sha }}.zip"
