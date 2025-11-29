@@ -38,7 +38,7 @@ jobs:
 
           # Install ONLY production dependencies in the package directory
           cd lambda-package
-          npm ci --only=production --no-audit --no-fund
+          npm install --production --no-audit --no-fund
 
           # Remove unnecessary files to reduce size
           find node_modules -name "*.md" -delete
