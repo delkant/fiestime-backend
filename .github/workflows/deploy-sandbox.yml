@@ -1,0 +1,59 @@
+name: Deploy Sandbox stack
+
+on:
+  push:
+    branches:
+      - sandbox
+
+jobs:
+  build-and-deploy-sandbox:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build TypeScript
+        run: npm run build
+
+      - name: Package Lambda artifact
+        run: |
+          zip -r build-artifact.zip dist node_modules package.json
+
+      - name: Configure AWS credentials (Sandbox)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID_SANDBOX }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY_SANDBOX }}
+          aws-region: ${{ secrets.AWS_REGION_SANDBOX }}
+
+      - name: Upload artifact to S3 (Sandbox)
+        run: |
+          export CODE_S3_KEY="fiestime/backend/sandbox/build-artifact-${{ github.sha }}.zip"
+          aws s3 cp build-artifact.zip "s3://${{ secrets.CODE_BUCKET_SANDBOX }}/${CODE_S3_KEY}"
+        env:
+          AWS_REGION: ${{ secrets.AWS_REGION_SANDBOX }}
+
+      - name: Deploy CloudFormation stack (Sandbox)
+        run: |
+          export CODE_S3_KEY="fiestime/backend/sandbox/build-artifact-${{ github.sha }}.zip"
+          aws cloudformation deploy \
+            --template-file cloudformation/template.yaml \
+            --stack-name "${{ secrets.CLOUDFORMATION_STACK_NAME_SANDBOX }}" \
+            --capabilities CAPABILITY_NAMED_IAM \
+            --parameter-overrides \
+              UploadBucketName="${{ secrets.UPLOAD_BUCKET_SANDBOX }}" \
+              CodeS3Bucket="${{ secrets.CODE_BUCKET_SANDBOX }}" \
+              CodeS3Key="${CODE_S3_KEY}" \
+              LambdaFunctionName="fiestime-graphql-sandbox" \
+              ApiStageName="sandbox"
+        env:
+          AWS_REGION: ${{ secrets.AWS_REGION_SANDBOX }}

@@ -1,0 +1,59 @@
+name: Deploy Prod stack
+
+on:
+  push:
+    branches:
+      - prod
+
+jobs:
+  build-and-deploy-prod:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build TypeScript
+        run: npm run build
+
+      - name: Package Lambda artifact
+        run: |
+          zip -r build-artifact.zip dist node_modules package.json
+
+      - name: Configure AWS credentials (Prod)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID_PROD }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY_PROD }}
+          aws-region: ${{ secrets.AWS_REGION_PROD }}
+
+      - name: Upload artifact to S3 (Prod)
+        run: |
+          export CODE_S3_KEY="fiestime/backend/prod/build-artifact-${{ github.sha }}.zip"
+          aws s3 cp build-artifact.zip "s3://${{ secrets.CODE_BUCKET_PROD }}/${CODE_S3_KEY}"
+        env:
+          AWS_REGION: ${{ secrets.AWS_REGION_PROD }}
+
+      - name: Deploy CloudFormation stack (Prod)
+        run: |
+          export CODE_S3_KEY="fiestime/backend/prod/build-artifact-${{ github.sha }}.zip"
+          aws cloudformation deploy \
+            --template-file cloudformation/template.yaml \
+            --stack-name "${{ secrets.CLOUDFORMATION_STACK_NAME_PROD }}" \
+            --capabilities CAPABILITY_NAMED_IAM \
+            --parameter-overrides \
+              UploadBucketName="${{ secrets.UPLOAD_BUCKET_PROD }}" \
+              CodeS3Bucket="${{ secrets.CODE_BUCKET_PROD }}" \
+              CodeS3Key="${CODE_S3_KEY}" \
+              LambdaFunctionName="fiestime-graphql-prod" \
+              ApiStageName="prod"
+        env:
+          AWS_REGION: ${{ secrets.AWS_REGION_PROD }}
