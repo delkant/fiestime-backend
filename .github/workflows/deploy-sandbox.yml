@@ -27,7 +27,38 @@ jobs:
 
       - name: Package Lambda artifact
         run: |
-          zip -r build-artifact.zip dist node_modules package.json
+          echo "📦 Creating optimized Lambda package..."
+
+          # Create clean directory for Lambda package
+          mkdir lambda-package
+
+          # Copy built code and production dependencies only
+          cp -r dist lambda-package/
+          cp package.json lambda-package/
+
+          # Install ONLY production dependencies in the package directory
+          cd lambda-package
+          npm ci --only=production --no-audit --no-fund
+
+          # Remove unnecessary files to reduce size
+          find node_modules -name "*.md" -delete
+          find node_modules -name "*.txt" -delete
+          find node_modules -name "*.map" -delete
+          find node_modules -name "test" -type d -exec rm -rf {} + 2>/dev/null || true
+          find node_modules -name "tests" -type d -exec rm -rf {} + 2>/dev/null || true
+          find node_modules -name "docs" -type d -exec rm -rf {} + 2>/dev/null || true
+          find node_modules -name "examples" -type d -exec rm -rf {} + 2>/dev/null || true
+
+          # Check package size
+          echo "📊 Package contents:"
+          du -sh . dist node_modules
+
+          # Create optimized zip
+          cd ..
+          zip -r build-artifact.zip lambda-package/*
+
+          echo "✅ Optimized Lambda package created"
+          ls -lh build-artifact.zip
 
       - name: Debug GitHub secrets
         run: |
