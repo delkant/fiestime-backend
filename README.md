@@ -43,3 +43,8 @@ Each workflow:
 4. Runs `aws cloudformation deploy` with appropriate parameters to update the fiestime stack.
 
 Configure the required AWS and bucket/stack details via GitHub repository secrets as indicated in the workflow files.
+
+## Deployment Status
+
+- ✅ **Build Validation**: Passing
+- 🚀 **Sandbox Deployment**: Ready with configured secrets
