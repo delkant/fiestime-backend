@@ -30,17 +30,7 @@ Parameters:
     Description: S3 key of the built Lambda artifact (zip) for this deployment.
 
 Resources:
-  UploadBucket:
-    Type: AWS::S3::Bucket
-    Properties:
-      BucketName: !Ref UploadBucketName
-      VersioningConfiguration:
-        Status: Enabled
-      PublicAccessBlockConfiguration:
-        BlockPublicAcls: true
-        BlockPublicPolicy: true
-        IgnorePublicAcls: true
-        RestrictPublicBuckets: true
+  # Note: S3 buckets are created externally and referenced by name
 
   GraphqlLambdaRole:
     Type: AWS::IAM::Role
@@ -128,7 +118,7 @@ Resources:
 Outputs:
   UploadBucketName:
     Description: S3 bucket name for uploaded videos
-    Value: !Ref UploadBucket
+    Value: !Ref UploadBucketName
   HttpApiUrl:
     Description: Base URL for the HTTP API
     Value: !Sub https://${HttpApi}.execute-api.${AWS::Region}.amazonaws.com/${ApiStageName}/graphql
