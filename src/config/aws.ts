@@ -3,8 +3,12 @@ import { loadEnv } from "./env";
 
 const env = loadEnv();
 
+// In Lambda, AWS_REGION is automatically available as a runtime environment variable
+// For local development, fall back to env.AWS_REGION
+const region = process.env.AWS_REGION || env.AWS_REGION;
+
 AWS.config.update({
-  region: env.AWS_REGION
+  region: region
 });
 
 export const s3 = new AWS.S3({

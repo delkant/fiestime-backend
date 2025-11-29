@@ -5,8 +5,10 @@ import { ExternalServiceError } from '../models/Error';
 const env = loadEnv();
 
 // Initialize AWS Secrets Manager
+// In Lambda, AWS_REGION is automatically available as a runtime environment variable
+const region = process.env.AWS_REGION || env.AWS_REGION;
 const secretsManager = new AWS.SecretsManager({
-  region: env.AWS_REGION,
+  region: region,
 });
 
 interface MongoSecret {

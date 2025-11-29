@@ -75,7 +75,6 @@ Resources:
       Timeout: !Ref LambdaTimeout
       Environment:
         Variables:
-          AWS_REGION: !Ref AWS::Region
           UPLOAD_BUCKET: !Ref UploadBucketName
           PRESIGNED_URL_TTL_SECONDS: 900
 
