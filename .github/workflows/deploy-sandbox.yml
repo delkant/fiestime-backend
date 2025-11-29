@@ -71,9 +71,27 @@ jobs:
       - name: Create S3 buckets if needed
         run: |
           echo "Creating S3 buckets if they don't exist..."
-          aws s3 mb s3://${{ secrets.CODE_BUCKET_SANDBOX }} --region ${{ secrets.AWS_REGION_SANDBOX }} || echo "Code bucket already exists or creation failed - continuing"
-          aws s3 mb s3://${{ secrets.UPLOAD_BUCKET_SANDBOX }} --region ${{ secrets.AWS_REGION_SANDBOX }} || echo "Upload bucket already exists or creation failed - continuing"
-          echo "✅ S3 bucket creation completed"
+          echo "Code bucket: ${{ secrets.CODE_BUCKET_SANDBOX }}"
+          echo "Upload bucket: ${{ secrets.UPLOAD_BUCKET_SANDBOX }}"
+          echo "Region: ${{ secrets.AWS_REGION_SANDBOX }}"
+
+          # Create code bucket
+          if aws s3 ls s3://${{ secrets.CODE_BUCKET_SANDBOX }} 2>/dev/null; then
+            echo "✅ Code bucket already exists"
+          else
+            echo "Creating code bucket..."
+            aws s3 mb s3://${{ secrets.CODE_BUCKET_SANDBOX }} --region ${{ secrets.AWS_REGION_SANDBOX }}
+            echo "✅ Code bucket created"
+          fi
+
+          # Create upload bucket
+          if aws s3 ls s3://${{ secrets.UPLOAD_BUCKET_SANDBOX }} 2>/dev/null; then
+            echo "✅ Upload bucket already exists"
+          else
+            echo "Creating upload bucket..."
+            aws s3 mb s3://${{ secrets.UPLOAD_BUCKET_SANDBOX }} --region ${{ secrets.AWS_REGION_SANDBOX }}
+            echo "✅ Upload bucket created"
+          fi
 
       - name: Upload artifact to S3 (Sandbox)
         run: |
