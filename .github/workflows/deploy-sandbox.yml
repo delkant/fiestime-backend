@@ -68,14 +68,13 @@ jobs:
           aws sts get-caller-identity
           echo "✅ AWS credentials are working"
 
-      - name: Create S3 buckets if needed
+      - name: Create code bucket if needed (upload bucket created by CloudFormation)
         run: |
-          echo "Creating S3 buckets if they don't exist..."
+          echo "Creating code bucket if it doesn't exist..."
           echo "Code bucket: ${{ secrets.CODE_BUCKET_SANDBOX }}"
-          echo "Upload bucket: ${{ secrets.UPLOAD_BUCKET_SANDBOX }}"
           echo "Region: ${{ secrets.AWS_REGION_SANDBOX }}"
 
-          # Create code bucket
+          # Create code bucket (CloudFormation will create upload bucket)
           if aws s3 ls s3://${{ secrets.CODE_BUCKET_SANDBOX }} 2>/dev/null; then
             echo "✅ Code bucket already exists"
           else
@@ -84,14 +83,7 @@ jobs:
             echo "✅ Code bucket created"
           fi
 
-          # Create upload bucket
-          if aws s3 ls s3://${{ secrets.UPLOAD_BUCKET_SANDBOX }} 2>/dev/null; then
-            echo "✅ Upload bucket already exists"
-          else
-            echo "Creating upload bucket..."
-            aws s3 mb s3://${{ secrets.UPLOAD_BUCKET_SANDBOX }} --region ${{ secrets.AWS_REGION_SANDBOX }}
-            echo "✅ Upload bucket created"
-          fi
+          echo "Note: Upload bucket will be created by CloudFormation"
 
       - name: Upload artifact to S3 (Sandbox)
         run: |
