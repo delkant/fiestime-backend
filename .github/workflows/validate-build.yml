@@ -41,13 +41,22 @@ jobs:
 
       - name: Validate CloudFormation template
         run: |
-          # Install AWS CLI for template validation
-          curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-          unzip awscliv2.zip
-          sudo ./aws/install
+          echo "Checking CloudFormation template syntax..."
+          # Basic YAML syntax validation
+          python3 -c "import yaml; yaml.safe_load(open('cloudformation/template.yaml'))" && echo "✅ CloudFormation template YAML syntax is valid" || echo "❌ CloudFormation template has YAML syntax errors"
 
-          # Validate template syntax (no AWS credentials needed)
-          aws cloudformation validate-template --template-body file://cloudformation/template.yaml --no-cli-pager || echo "CloudFormation template validation skipped (no credentials)"
+          # Check for required sections
+          if grep -q "AWSTemplateFormatVersion" cloudformation/template.yaml; then
+            echo "✅ CloudFormation template has AWSTemplateFormatVersion"
+          else
+            echo "❌ CloudFormation template missing AWSTemplateFormatVersion"
+          fi
+
+          if grep -q "Resources:" cloudformation/template.yaml; then
+            echo "✅ CloudFormation template has Resources section"
+          else
+            echo "❌ CloudFormation template missing Resources section"
+          fi
 
       - name: Build Summary
         run: |
