@@ -53,7 +53,7 @@ describe('VideoRepository', () => {
       s3Key: 'events/test-event-2025-03-03/raw/1234567890_test.mp4',
       originalFileName: 'test.mp4',
       contentType: 'video/mp4',
-      status: 'pending',
+      status: 'PENDING',
       sourceDevice: 'iPhone 14',
       sourceCameraLabel: 'Main Camera'
     };
@@ -201,12 +201,12 @@ describe('VideoRepository', () => {
       await videoRepo.getVideosByEventId(eventId, {
         limit: 10,
         offset: 5,
-        status: 'uploaded'
+        status: 'UPLOADED'
       });
 
       expect(mockCollection.find).toHaveBeenCalledWith({
         eventId: new ObjectId(eventId),
-        status: 'uploaded'
+        status: 'UPLOADED'
       });
       expect(mockQuery.skip).toHaveBeenCalledWith(5);
       expect(mockQuery.limit).toHaveBeenCalledWith(10);
@@ -233,17 +233,17 @@ describe('VideoRepository', () => {
     it('should update video status successfully', async () => {
       const mockUpdatedVideo = {
         _id: new ObjectId(videoId),
-        status: 'uploaded',
+        status: 'UPLOADED',
         updatedAt: new Date()
       };
       mockCollection.findOneAndUpdate.mockResolvedValue(mockUpdatedVideo);
 
-      const result = await videoRepo.updateVideoStatus(videoId, 'uploaded');
+      const result = await videoRepo.updateVideoStatus(videoId, 'UPLOADED');
 
       expect(result).toEqual(mockUpdatedVideo);
       expect(mockCollection.findOneAndUpdate).toHaveBeenCalledWith(
         { _id: new ObjectId(videoId) },
-        { $set: { status: 'uploaded', updatedAt: expect.any(Date) } },
+        { $set: { status: 'UPLOADED', updatedAt: expect.any(Date) } },
         { returnDocument: 'after' }
       );
     });
@@ -252,16 +252,16 @@ describe('VideoRepository', () => {
       const uploadedAt = new Date();
       const mockUpdatedVideo = {
         _id: new ObjectId(videoId),
-        status: 'uploaded',
+        status: 'UPLOADED',
         uploadedAt
       };
       mockCollection.findOneAndUpdate.mockResolvedValue(mockUpdatedVideo);
 
-      await videoRepo.updateVideoStatus(videoId, 'uploaded', uploadedAt);
+      await videoRepo.updateVideoStatus(videoId, 'UPLOADED', uploadedAt);
 
       expect(mockCollection.findOneAndUpdate).toHaveBeenCalledWith(
         { _id: new ObjectId(videoId) },
-        { $set: { status: 'uploaded', updatedAt: expect.any(Date), uploadedAt } },
+        { $set: { status: 'UPLOADED', updatedAt: expect.any(Date), uploadedAt } },
         { returnDocument: 'after' }
       );
     });
@@ -269,7 +269,7 @@ describe('VideoRepository', () => {
     it('should throw NotFoundError when video not found', async () => {
       mockCollection.findOneAndUpdate.mockResolvedValue(null);
 
-      await expect(videoRepo.updateVideoStatus(videoId, 'uploaded'))
+      await expect(videoRepo.updateVideoStatus(videoId, 'UPLOADED'))
         .rejects.toThrow(NotFoundError);
     });
   });
@@ -377,8 +377,8 @@ describe('VideoRepository', () => {
   describe('getVideosByStatus', () => {
     it('should return videos by status', async () => {
       const mockVideos = [
-        { _id: new ObjectId(), status: 'pending' },
-        { _id: new ObjectId(), status: 'pending' }
+        { _id: new ObjectId(), status: 'PENDING' },
+        { _id: new ObjectId(), status: 'PENDING' }
       ];
 
       const mockQuery = {
@@ -388,10 +388,10 @@ describe('VideoRepository', () => {
       };
       mockCollection.find.mockReturnValue(mockQuery);
 
-      const result = await videoRepo.getVideosByStatus('pending');
+      const result = await videoRepo.getVideosByStatus('PENDING');
 
       expect(result).toEqual(mockVideos);
-      expect(mockCollection.find).toHaveBeenCalledWith({ status: 'pending' });
+      expect(mockCollection.find).toHaveBeenCalledWith({ status: 'PENDING' });
       expect(mockQuery.limit).toHaveBeenCalledWith(100);
     });
 
@@ -403,7 +403,7 @@ describe('VideoRepository', () => {
       };
       mockCollection.find.mockReturnValue(mockQuery);
 
-      await videoRepo.getVideosByStatus('uploaded', 50);
+      await videoRepo.getVideosByStatus('UPLOADED', 50);
 
       expect(mockQuery.limit).toHaveBeenCalledWith(50);
     });
@@ -416,7 +416,7 @@ describe('VideoRepository', () => {
       };
       mockCollection.find.mockReturnValue(mockQuery);
 
-      await videoRepo.getVideosByStatus('failed', 2000); // Over safety limit
+      await videoRepo.getVideosByStatus('FAILED', 2000); // Over safety limit
 
       expect(mockQuery.limit).toHaveBeenCalledWith(1000); // Should be capped
     });

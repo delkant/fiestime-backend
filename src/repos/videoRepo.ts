@@ -127,7 +127,7 @@ export class VideoRepository {
         updatedAt: new Date()
       };
 
-      if (status === 'uploaded' && uploadedAt) {
+      if (status === 'UPLOADED' && uploadedAt) {
         updateDoc.uploadedAt = uploadedAt;
       }
 

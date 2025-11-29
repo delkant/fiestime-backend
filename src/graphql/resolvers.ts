@@ -209,7 +209,7 @@ export const resolvers = {
       status: VideoStatus;
     }) => {
       try {
-        const uploadedAt = args.status === 'uploaded' ? new Date() : undefined;
+        const uploadedAt = args.status === 'UPLOADED' ? new Date() : undefined;
 
         return await videoRepo.updateVideoStatus(args.videoId, args.status, uploadedAt);
       } catch (error) {
