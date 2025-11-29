@@ -25,39 +25,42 @@ jobs:
       - name: Build TypeScript
         run: npm run build
 
-      - name: Package Lambda artifact
+      - name: Package Lambda artifact (Webpack Optimized)
         run: |
-          echo "📦 Creating optimized Lambda package..."
+          echo "📦 Creating webpack-optimized Lambda package..."
 
-          # Create clean directory for Lambda package
-          mkdir lambda-package
+          # Build the bundled Lambda function
+          echo "🔧 Building with webpack..."
+          npm run build:lambda
 
-          # Copy built code and production dependencies only
-          cp -r dist lambda-package/
-          cp package.json lambda-package/
+          # Check the webpack output size
+          echo "📊 Webpack bundle size:"
+          ls -lh lambda-dist/
+          du -sh lambda-dist/
 
-          # Install ONLY production dependencies in the package directory
-          cd lambda-package
-          npm install --production --no-audit --no-fund
+          # Copy only essential runtime files - NO node_modules needed!
+          echo "📋 Copying essential files..."
+          cp package.json lambda-dist/
 
-          # Remove unnecessary files to reduce size
-          find node_modules -name "*.md" -delete
-          find node_modules -name "*.txt" -delete
-          find node_modules -name "*.map" -delete
-          find node_modules -name "test" -type d -exec rm -rf {} + 2>/dev/null || true
-          find node_modules -name "tests" -type d -exec rm -rf {} + 2>/dev/null || true
-          find node_modules -name "docs" -type d -exec rm -rf {} + 2>/dev/null || true
-          find node_modules -name "examples" -type d -exec rm -rf {} + 2>/dev/null || true
+          # Only install runtime dependencies that are externalized
+          cd lambda-dist
+          # AWS SDK is provided by Lambda runtime, only install if absolutely necessary
+          npm install --production --only=production --no-audit --no-fund --no-optional
 
-          # Check package size
-          echo "📊 Package contents:"
-          du -sh . dist node_modules
+          # Remove any unnecessary files
+          find . -name "*.md" -delete 2>/dev/null || true
+          find . -name "*.txt" -delete 2>/dev/null || true
+          find . -name "*.map" -delete 2>/dev/null || true
 
-          # Create optimized zip
+          echo "📊 Final package size:"
+          du -sh .
+          ls -la
+
+          # Create the deployment zip
           cd ..
-          zip -r build-artifact.zip lambda-package/*
+          zip -r build-artifact.zip lambda-dist/*
 
-          echo "✅ Optimized Lambda package created"
+          echo "✅ Webpack-optimized Lambda package created"
           ls -lh build-artifact.zip
 
       - name: Debug GitHub secrets
