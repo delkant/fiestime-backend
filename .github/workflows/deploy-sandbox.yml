@@ -28,12 +28,44 @@ jobs:
         run: |
           zip -r build-artifact.zip dist node_modules package.json
 
+      - name: Debug GitHub secrets
+        run: |
+          echo "Checking if secrets are available..."
+          echo "AWS_ACCESS_KEY_ID_SANDBOX: ${{ secrets.AWS_ACCESS_KEY_ID_SANDBOX != '' }}"
+          echo "AWS_SECRET_ACCESS_KEY_SANDBOX: ${{ secrets.AWS_SECRET_ACCESS_KEY_SANDBOX != '' }}"
+          echo "AWS_REGION_SANDBOX: ${{ secrets.AWS_REGION_SANDBOX != '' }}"
+          echo "CODE_BUCKET_SANDBOX: ${{ secrets.CODE_BUCKET_SANDBOX != '' }}"
+          echo "UPLOAD_BUCKET_SANDBOX: ${{ secrets.UPLOAD_BUCKET_SANDBOX != '' }}"
+          echo "CLOUDFORMATION_STACK_NAME_SANDBOX: ${{ secrets.CLOUDFORMATION_STACK_NAME_SANDBOX != '' }}"
+
+      - name: Validate required secrets
+        run: |
+          if [ -z "${{ secrets.AWS_ACCESS_KEY_ID_SANDBOX }}" ]; then
+            echo "❌ AWS_ACCESS_KEY_ID_SANDBOX is not set"
+            exit 1
+          fi
+          if [ -z "${{ secrets.AWS_SECRET_ACCESS_KEY_SANDBOX }}" ]; then
+            echo "❌ AWS_SECRET_ACCESS_KEY_SANDBOX is not set"
+            exit 1
+          fi
+          if [ -z "${{ secrets.AWS_REGION_SANDBOX }}" ]; then
+            echo "❌ AWS_REGION_SANDBOX is not set"
+            exit 1
+          fi
+          echo "✅ All required AWS secrets are configured"
+
       - name: Configure AWS credentials (Sandbox)
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID_SANDBOX }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY_SANDBOX }}
           aws-region: ${{ secrets.AWS_REGION_SANDBOX }}
+
+      - name: Verify AWS configuration
+        run: |
+          echo "Testing AWS CLI configuration..."
+          aws sts get-caller-identity
+          echo "✅ AWS credentials are working"
 
       - name: Upload artifact to S3 (Sandbox)
         run: |
